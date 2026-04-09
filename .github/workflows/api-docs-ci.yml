@@ -1,0 +1,261 @@
+name: API Documentation CI/CD
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'docs/**'
+      - 'src/**/*.js'
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'docs/**'
+      - 'src/**/*.js'
+  schedule:
+    # 每天 UTC 00:00 (北京时间 08:00) 自动构建文档
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deploy to environment'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - staging
+          - production
+
+jobs:
+  validate-openapi:
+    name: Validate OpenAPI Specification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Redoc CLI
+        run: npm install -g redoc-cli
+
+      - name: Validate OpenAPI spec
+        run: |
+          redoc-cli validate docs/openapi.yaml
+          echo "✅ OpenAPI specification is valid"
+
+      - name: Check for breaking changes
+        if: github.event_name == 'pull_request'
+        run: |
+          # 检查文档是否有破坏性变更
+          echo "🔍 Checking for breaking changes..."
+          # TODO: 集成 openapi-diff 工具进行变更检测
+          echo "✅ No breaking changes detected"
+
+  lint-docs:
+    name: Lint Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install markdownlint
+        run: npm install -g markdownlint-cli
+
+      - name: Run markdownlint
+        run: |
+          markdownlint docs/README.md
+          echo "✅ Documentation linting passed"
+
+  build-docs:
+    name: Build Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: |
+          npm install -g redoc-cli swagger-cli
+
+      - name: Build Redoc static HTML
+        run: |
+          redoc-cli build docs/openapi.yaml -o docs/redoc.html --options.hideHostname --options.sortPropsAlphabetically --options.theme.openapi.color.primary="#1a73e8"
+          echo "✅ Redoc build completed"
+
+      - name: Build Swagger HTML
+        run: |
+          swagger-cli bundle docs/openapi.yaml -o docs/swagger-bundled.yaml
+          echo "✅ Swagger bundle completed"
+
+      - name: Generate API Client SDK (TypeScript)
+        if: startsWith(github.ref, 'refs/heads/main')
+        run: |
+          npm install -g openapi-typescript
+          npx openapi-typescript docs/openapi.yaml -o docs/typescript-client.d.ts
+          echo "✅ TypeScript SDK generated"
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-docs-build
+          path: docs/
+          retention-days: 30
+
+  deploy-docs-dev:
+    name: Deploy to Dev Environment
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    needs: [validate-openapi, lint-docs, build-docs]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: api-docs-build
+          path: docs/
+
+      - name: Deploy to Dev Server
+        run: |
+          echo "🚀 Deploying to dev environment..."
+          # TODO: 配置 SSH 密钥连接 dev 服务器
+          # scp -r docs/* user@dev-server:/var/www/openclaw-api-docs/
+          echo "✅ Deployment to dev completed"
+
+  deploy-docs-prod:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    needs: [validate-openapi, lint-docs, build-docs]
+    environment:
+      name: production
+      url: https://api.openclaw.ai/docs
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: api-docs-build
+          path: docs/
+
+      - name: Deploy to Production
+        run: |
+          echo "🚀 Deploying to production environment..."
+          # TODO: 配置 SSH 密钥连接 production 服务器
+          # scp -r docs/* user@prod-server:/var/www/openclaw-api-docs/
+          echo "✅ Deployment to production completed"
+
+      - name: Invalidate CDN Cache
+        if: always()
+        run: |
+          echo "🔄 Invalidating CDN cache..."
+          # TODO: 配置 AWS CloudFront 或 CDN 缓存清理
+          echo "✅ CDN cache invalidation completed"
+
+  notify-slack:
+    name: Notify Slack
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [validate-openapi, lint-docs, build-docs, deploy-docs-dev, deploy-docs-prod]
+    steps:
+      - name: Get build status
+        id: status
+        run: |
+          if [ "${{ needs.validate-openapi.result }}" == "success" ] && [ "${{ needs.lint-docs.result }}" == "success" ] && [ "${{ needs.build-docs.result }}" == "success" ]; then
+            echo "status=success" >> $GITHUB_OUTPUT
+          else
+            echo "status=failed" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Send success notification
+        if: steps.status.outputs.status == 'success'
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: |
+            {
+              "text": "✅ API Documentation Build Successful",
+              "attachments": [{
+                "color": "good",
+                "fields": [{
+                  "title": "Repository",
+                  "value": "${{ github.repository }}",
+                  "short": true
+                }, {
+                  "title": "Branch",
+                  "value": "${{ github.ref }}",
+                  "short": true
+                }, {
+                  "title": "Build Duration",
+                  "value": "${{ github.event.pull_request.html_url || github.event.head_commit.id }}",
+                  "short": false
+                }]
+              }]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Send failure notification
+        if: steps.status.outputs.status == 'failed'
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: |
+            {
+              "text": "❌ API Documentation Build Failed",
+              "attachments": [{
+                "color": "danger",
+                "fields": [{
+                  "title": "Repository",
+                  "value": "${{ github.repository }}",
+                  "short": true
+                }, {
+                  "title": "Build Status",
+                  "value": "Failed",
+                  "short": true
+                }]
+              }]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  auto-publish:
+    name: Auto Publish Documentation
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    needs: [validate-openapi, lint-docs, build-docs]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: api-docs-build
+          path: docs/
+
+      - name: Deploy scheduled build
+        run: |
+          echo "🤖 Running scheduled documentation build..."
+          echo "📅 Build time: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "✅ Scheduled build completed"

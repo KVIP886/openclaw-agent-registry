@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Copilot Core - Natural Language Agent Configuration</title>
+  <link rel="stylesheet" href="/styles/copilot-ui.css">
+</head>
+<body>
+  <div id="copilot-app"></div>
+  <script src="/js/copilot-ui.js"></script>
+  <script>
+    // Initialize Copilot UI
+    document.addEventListener('DOMContentLoaded', () => {
+      const ui = new CopilotUI({
+        apiUrl: '/api/copilot',
+        autoRefresh: true,
+        refreshInterval: 3000
+      });
+
+      console.log('Copilot Core UI initialized');
+    });
+  </script>
+</body>
+</html>

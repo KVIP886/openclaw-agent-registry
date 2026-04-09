@@ -1,0 +1,88 @@
+{{- /*
+OpenClaw Agent Registry
+Deployment Template
+*/ -}}
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "agent-registry.fullname" . }}
+  labels:
+    {{- include "agent-registry.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "agent-registry.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "agent-registry.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "agent-registry.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
+          startupProbe:
+            {{- toYaml .Values.startupProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "agent-registry.fullname" . }}-config
+            - secretRef:
+                name: {{ include "agent-registry.fullname" . }}-secrets
+          {{- with .Values.additionalEnvVars }}
+          env:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: data-volume
+              mountPath: /app/data
+            - name: tmp-volume
+              mountPath: /tmp
+      {{- with .Values.initContainers }}
+      initContainers:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: data-volume
+          persistentVolumeClaim:
+            claimName: {{ include "agent-registry.fullname" . }}-data
+        - name: tmp-volume
+          emptyDir: {}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

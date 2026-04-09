@@ -380,6 +380,40 @@ class RBACManager {
       next();
     };
   }
+
+  /**
+   * 获取所有角色定义
+   */
+  getRoles() {
+    const roles = {};
+    this.roles.forEach((role, roleName) => {
+      roles[roleName] = {
+        id: role.id,
+        name: role.name,
+        description: role.description,
+        permissions: role.permissions
+      };
+    });
+    return roles;
+  }
+
+  /**
+   * 获取所有唯一权限
+   */
+  getAllPermissions() {
+    const allPermissions = new Set();
+    this.roles.forEach((role) => {
+      role.permissions.forEach(perm => allPermissions.add(perm));
+    });
+    return [...allPermissions];
+  }
+
+  /**
+   * 获取所有角色名称
+   */
+  getRoleNames() {
+    return [...this.roles.keys()];
+  }
 }
 
 module.exports = RBACManager;

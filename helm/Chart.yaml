@@ -1,0 +1,19 @@
+apiVersion: v2
+name: openclaw-agent-registry
+description: OpenClaw Agent Registry Kubernetes Helm Chart
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - api
+  - registry
+  - agent
+  - management
+maintainers:
+  - name: OpenClaw Team
+    email: support@openclaw.ai
+    url: https://github.com/KVIP886/openclaw-agent-registry
+sources:
+  - https://github.com/KVIP886/openclaw-agent-registry
+home: https://github.com/KVIP886/openclaw-agent-registry
+icon: https://openclaw.ai/icon.png

@@ -1,0 +1,146 @@
+# Default values for OpenClaw Agent Registry.
+# This is a YAML-formatted file.
+
+replicaCount: 3
+
+image:
+  repository: openclaw/agent-registry
+  pullPolicy: Always
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "1111"
+  prometheus.io/path: "/metrics"
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  runAsGroup: 1001
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+service:
+  type: ClusterIP
+  port: 1111
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  hosts:
+    - host: api.openclaw.ai
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: agent-registry-tls
+      hosts:
+        - api.openclaw.ai
+
+resources:
+  requests:
+    memory: "256Mi"
+    cpu: "100m"
+  limits:
+    memory: "512Mi"
+    cpu: "500m"
+
+autoscaling:
+  enabled: false
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app
+                operator: In
+                values:
+                  - openclaw-agent-registry
+          topologyKey: kubernetes.io/hostname
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 1111
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /health
+    port: 1111
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+startupProbe:
+  httpGet:
+    path: /health
+    port: 1111
+  initialDelaySeconds: 0
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 30
+
+persistence:
+  enabled: true
+  storageClassName: "standard"
+  accessMode: ReadWriteOnce
+  size: 10Gi
+  annotations: {}
+
+configMap:
+  NODE_ENV: "production"
+  PORT: "1111"
+  API_VERSION: "v1"
+  TZ: "Asia/Shanghai"
+  DATABASE_TYPE: "in-memory"
+  MAX_CONNECTIONS: "100"
+  LOG_LEVEL: "info"
+
+secrets:
+  JWT_SECRET: "generate-production-secret-here"
+  ADMIN_PASSWORD_HASH: "generate-hash-here"
+  OPERATOR_PASSWORD_HASH: "generate-hash-here"
+
+prometheus:
+  serviceMonitor:
+    enabled: false
+    namespace: openclaw-registry
+    labels: {}
+    interval: 30s
+
+additionalPodAnnotations: {}
+additionalEnvVars: []
+initContainers: []

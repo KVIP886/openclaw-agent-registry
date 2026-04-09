@@ -110,7 +110,8 @@ function agentsCRUD() {
     },
     
     getById: (id) => {
-      return db.agents.find(a => a.id === id);
+      const agent = db.agents.find(a => a.id === id);
+      return agent || null;
     },
     
     create: (data) => {
@@ -156,7 +157,7 @@ function agentsCRUD() {
     delete: (id) => {
       const index = db.agents.findIndex(a => a.id === id);
       if (index === -1) {
-        return { error: 'Agent not found' };
+        return { error: 'Agent not found', deleted: null };
       }
       
       const deleted = db.agents.splice(index, 1)[0];
@@ -291,11 +292,23 @@ function eventsCRUD() {
         result = result.filter(e => e.event_type === filters.event_type);
       }
       
+      // Sort by timestamp descending (newest first) FIRST
+      result = result.sort((a, b) => {
+        const dateA = new Date(a.timestamp);
+        const dateB = new Date(b.timestamp);
+        return dateB - dateA; // Descending: newest first
+      });
+      
+      // THEN apply limit if specified
+      if (filters.limit) {
+        result = result.slice(0, filters.limit);
+      }
+      
       if (filters.repository) {
         result = result.filter(e => e.repository === filters.repository);
       }
       
-      return result.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      return result;
     },
     
     create: (data) => {
@@ -316,7 +329,13 @@ function eventsCRUD() {
       };
       
       db.events.push(event);
-      persistData();
+      // Manually persistData() instead of persistData() to allow custom timestamp control
+      try {
+        const filePath = path.join(dataDir, `events.json`);
+        fs.writeFileSync(filePath, JSON.stringify(db.events, null, 2), 'utf8');
+      } catch (error) {
+        console.error(`Failed to persist events: ${error.message}`);
+      }
       return { error: null, event };
     }
   };
@@ -367,14 +386,21 @@ function auditLogsCRUD() {
   };
 }
 
-// 导出所有 CRUD
+// 导出所有 CRUD 和辅助函数
 module.exports = {
   db,
+  default: db,
   loadPersistedData,
   persistData,
   agents: agentsCRUD(),
   permissions: permissionsCRUD(),
   deployments: deploymentsCRUD(),
   events: eventsCRUD(),
-  auditLogs: auditLogsCRUD()
+  auditLogs: auditLogsCRUD(),
+  resetData: () => {
+    // 清空所有表数据
+    ['agents', 'permissions', 'deployments', 'configs', 'events', 'auditLogs'].forEach(key => {
+      db[key] = [];
+    });
+  }
 };

@@ -1,0 +1,302 @@
+# OpenClaw Agent Registry - Kubernetes Deployment Configuration
+# Version: 1.0.0
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openclaw-registry
+  labels:
+    name: openclaw-registry
+    app: openclaw-agent-registry
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: agent-registry-config
+  namespace: openclaw-registry
+data:
+  NODE_ENV: "production"
+  PORT: "1111"
+  API_VERSION: "v1"
+  TZ: "Asia/Shanghai"
+  DATABASE_TYPE: "in-memory"
+  MAX_CONNECTIONS: "100"
+  LOG_LEVEL: "info"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: agent-registry-secrets
+  namespace: openclaw-registry
+type: Opaque
+stringData:
+  JWT_SECRET: "your-production-jwt-secret-change-in-production"
+  ADMIN_PASSWORD_HASH: "your-admin-password-hash"
+  OPERATOR_PASSWORD_HASH: "your-operator-password-hash"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agent-registry
+  namespace: openclaw-registry
+  labels:
+    app: openclaw-agent-registry
+    version: v1.0.0
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: openclaw-agent-registry
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: openclaw-agent-registry
+        version: v1.0.0
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "1111"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: agent-registry
+          image: openclaw/agent-registry:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 1111
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: agent-registry-config
+            - secretRef:
+                name: agent-registry-secrets
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 1111
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 1111
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            successThreshold: 1
+            failureThreshold: 3
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1001
+            runAsGroup: 1001
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: data-volume
+              mountPath: /app/data
+            - name: tmp-volume
+              mountPath: /tmp
+            - name: certs-volume
+              mountPath: /etc/ssl/certs
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 1111
+            initialDelaySeconds: 0
+            periodSeconds: 5
+            timeoutSeconds: 3
+            successThreshold: 1
+            failureThreshold: 30
+      initContainers:
+        - name: init-data-volume
+          image: busybox:1.35
+          command: ['sh', '-c', 'chmod -R 755 /app/data && chown -R 1001:1001 /app/data']
+          volumeMounts:
+            - name: data-volume
+              mountPath: /app/data
+          securityContext:
+            runAsUser: 0
+      volumes:
+        - name: data-volume
+          persistentVolumeClaim:
+            claimName: agent-registry-data-pvc
+        - name: tmp-volume
+          emptyDir: {}
+        - name: certs-volume
+          configMap:
+            name: ca-certificates
+      serviceAccountName: openclaw-agent-registry
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - openclaw-agent-registry
+                topologyKey: kubernetes.io/hostname
+      terminationGracePeriodSeconds: 30
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agent-registry
+  namespace: openclaw-registry
+  labels:
+    app: openclaw-agent-registry
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "1111"
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 1111
+      targetPort: http
+      protocol: TCP
+  selector:
+    app: openclaw-agent-registry
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: agent-registry-ingress
+  namespace: openclaw-registry
+  labels:
+    app: openclaw-agent-registry
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      add_header X-Frame-Options "SAMEORIGIN" always;
+      add_header X-Content-Type-Options "nosniff" always;
+      add_header X-XSS-Protection "1; mode=block" always;
+spec:
+  tls:
+    - hosts:
+        - api.openclaw.ai
+      secretName: agent-registry-tls
+  rules:
+    - host: api.openclaw.ai
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: agent-registry
+                port:
+                  number: 1111
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: agent-registry-data-pvc
+  namespace: openclaw-registry
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: standard
+  volumeMode: Filesystem
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: agent-registry-role
+  namespace: openclaw-registry
+rules:
+  - apiGroups: [""]
+    resources: ["secrets", "configmaps"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: agent-registry-rolebinding
+  namespace: openclaw-registry
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: agent-registry-role
+subjects:
+  - kind: ServiceAccount
+    name: openclaw-agent-registry
+    namespace: openclaw-registry
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: openclaw-agent-registry
+  namespace: openclaw-registry
+  labels:
+    app: openclaw-agent-registry
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: agent-registry-monitor
+  namespace: openclaw-registry
+  labels:
+    app: openclaw-agent-registry
+spec:
+  selector:
+    matchLabels:
+      app: openclaw-agent-registry
+  endpoints:
+    - port: http
+      interval: 30s
+      path: /metrics
+      scheme: http
+  namespaceSelector:
+    matchNames:
+      - openclaw-registry

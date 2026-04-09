@@ -1,0 +1,94 @@
+version: '3.8'
+
+services:
+  # ============================================
+  # Development Mode
+  # ============================================
+  
+  agent-registry-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: agent-registry-dev
+    ports:
+      - "1111:1111"
+    environment:
+      - NODE_ENV=development
+      - PORT=1111
+      - DB_HOST=postgres-dev
+      - DB_PORT=5432
+      - DB_NAME=agent_registry_dev
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - WATCH_MODE=true
+      - LOG_LEVEL=debug
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - ./logs:/app/logs
+      - ./data:/app/data
+    depends_on:
+      postgres-dev:
+        condition: service_healthy
+    command: node --watch index.js
+    networks:
+      - dev-network
+
+  postgres-dev:
+    image: postgres:15-alpine
+    container_name: postgres-dev-db
+    ports:
+      - "5433:5432"
+    environment:
+      - POSTGRES_DB=agent_registry_dev
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./scripts/database-schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d agent_registry_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - dev-network
+
+  redis-dev:
+    image: redis:7-alpine
+    container_name: redis-dev-cache
+    ports:
+      - "6380:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_dev_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - dev-network
+
+# ============================================
+# Development Volumes
+# ============================================
+
+volumes:
+  postgres_dev_data:
+    driver: local
+  redis_dev_data:
+    driver: local
+
+# ============================================
+# Development Networks
+# ============================================
+
+networks:
+  dev-network:
+    driver: bridge

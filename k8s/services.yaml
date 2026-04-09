@@ -1,0 +1,174 @@
+# Agent Registry - Kubernetes Services
+# Version: 1.0.0
+# Date: 2026-04-10 (Week 5 Day 5)
+
+# ============================================
+# Service 1: ClusterIP (Internal Access)
+# ============================================
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: agent-registry
+  labels:
+    app: agent-registry
+spec:
+  type: ClusterIP
+  selector:
+    app: agent-registry
+  ports:
+  - name: http
+    port: 1111
+    targetPort: http
+    protocol: TCP
+  - name: metrics
+    port: 9090
+    targetPort: metrics
+    protocol: TCP
+  # Session affinity for sticky sessions
+  sessionAffinity: None
+  # Traffic distribution
+  ipFamilyPolicy: SingleStack
+
+---
+
+# ============================================
+# Service 2: LoadBalancer (External Access)
+# ============================================
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: agent-registry-lb
+  labels:
+    app: agent-registry
+spec:
+  type: LoadBalancer
+  selector:
+    app: agent-registry
+  ports:
+  - name: http
+    port: 80
+    targetPort: http
+    protocol: TCP
+    nodePort: 30001
+  - name: https
+    port: 443
+    targetPort: http
+    protocol: TCP
+  # LoadBalancer configuration
+  loadBalancerIP: "" # Set if needed
+  loadBalancerSourceRanges:
+  - 0.0.0.0/0 # Restrict to specific IPs if needed
+  # External traffic policy
+  externalTrafficPolicy: Local
+
+---
+
+# ============================================
+# Service 3: Headless Service (for StatefulSets)
+# ============================================
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: agent-registry-headless
+  labels:
+    app: agent-registry
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app: agent-registry
+  ports:
+  - name: http
+    port: 1111
+    targetPort: http
+    protocol: TCP
+  - name: metrics
+    port: 9090
+    targetPort: metrics
+    protocol: TCP
+  publishNotReadyAddresses: true
+
+---
+
+# ============================================
+# Service 4: Metrics Service (Prometheus)
+# ============================================
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: agent-registry-metrics
+  labels:
+    app: agent-registry
+    component: metrics
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9090"
+    prometheus.io/path: "/metrics"
+spec:
+  type: ClusterIP
+  selector:
+    app: agent-registry
+  ports:
+  - name: metrics
+    port: 9090
+    targetPort: metrics
+    protocol: TCP
+  # Metrics only accessible within cluster
+  clusterIP: None # Headless for direct pod access
+
+---
+
+# ============================================
+# Service: Database Service
+# ============================================
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-db
+  labels:
+    app: postgres-db
+spec:
+  type: ClusterIP
+  selector:
+    app: postgres-db
+  ports:
+  - name: postgres
+    port: 5432
+    targetPort: postgres
+    protocol: TCP
+  # Database specific settings
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800 # 3 hours
+
+---
+
+# ============================================
+# Service: Redis Service
+# ============================================
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-cache
+  labels:
+    app: redis-cache
+spec:
+  type: ClusterIP
+  selector:
+    app: redis-cache
+  ports:
+  - name: redis
+    port: 6379
+    targetPort: redis
+    protocol: TCP
+  # Redis specific settings
+  sessionAffinity: None
+  # Enable TLS if needed
+  # tlsPort: 6380

@@ -14,8 +14,38 @@ const auth = require('./auth');
 const RBACManager = require('./rbac');
 const AuditLogger = require('./auditLogger');
 
+// 引入增强功能模块
+const MemoryManager = require('./database/enhanced/MemoryManager');
+const VersionControl = require('./database/enhanced/VersionControl');
+const ConflictResolver = require('./database/enhanced/ConflictResolver');
+const SyncEngine = require('./database/enhanced/SyncEngine');
+
 const rbac = new RBACManager();
 const auditLog = new AuditLogger();
+
+// 初始化增强功能模块
+const memoryManager = new MemoryManager({
+  maxSnapshots: 100,
+  snapshotInterval: 5000, // 5 秒自动快照
+  enablePerformance: true
+});
+const versionControl = new VersionControl(memoryManager, db);
+const conflictResolver = new ConflictResolver(memoryManager, db);
+const syncEngine = new SyncEngine(memoryManager, versionControl, {
+  autoSync: true,
+  syncInterval: 10000, // 10 秒同步一次
+  conflictResolution: 'timestamp_last_wins'
+});
+
+// 初始化审计日志记录同步事件
+syncEngine.onSync((event, data) => {
+  auditLog.logEvent({
+    type: 'sync',
+    event,
+    data,
+    timestamp: new Date().toISOString()
+  });
+});
 
 const app = express();
 const PORT = process.env.PORT || 3000;

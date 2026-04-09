@@ -1,0 +1,1160 @@
+openapi: 3.0.3
+info:
+  title: OpenClaw Agent Registry API
+  description: |
+    OpenClaw Agent Registry v1.0.0 是一个企业级 Agent 注册和管理中心，提供完整的 Agent 生命周期管理功能。
+    
+    ## 主要功能
+    - **Agent 注册管理**: 完整的 Agent 注册、更新、删除功能
+    - **RBAC 权限控制**: 基于角色的访问控制，支持 8 种预定义角色
+    - **JWT 认证**: 标准的 JWT Token 认证机制
+    - **审计日志**: 所有操作自动记录，支持追溯和查询
+    - **健康检查**: 实时服务状态监控
+    
+    ## 认证方式
+    使用 Bearer Token 进行认证，在请求头中包含：
+    ```
+    Authorization: Bearer YOUR_ACCESS_TOKEN
+    ```
+    
+    ## 权限级别
+    - **agent_admin**: 管理员权限，可以执行所有操作
+    - **agent_operator**: 操作员权限，可以执行部署和更新操作
+    - **agent_viewer**: 查看者权限，只读访问
+    
+    ## 错误响应
+    所有错误响应遵循统一格式：
+    ```json
+    {
+      "error": "错误描述",
+      "statusCode": 400,
+      "timestamp": "2026-04-09T16:13:00.000Z"
+    }
+    ```
+  version: 1.0.0
+  contact:
+    name: OpenClaw Team
+    email: support@openclaw.ai
+    url: https://github.com/KVIP886/openclaw-agent-registry
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:1111
+    description: 本地开发环境
+  - url: http://localhost:3000
+    description: 本地开发环境（备用端口）
+
+tags:
+  - name: Health
+    description: 服务健康检查和状态监控
+  - name: Authentication
+    description: 用户认证和令牌管理
+  - name: Agents
+    description: Agent 注册和管理操作
+  - name: Permissions
+    description: 权限管理和角色分配
+  - name: Deployments
+    description: Agent 部署和管理
+  - name: System
+    description: 系统管理和配置操作
+
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: 服务健康检查 (Health Check)
+      description: |
+        检查服务运行状态和系统资源使用情况。
+        
+        **无需认证即可访问**。
+        
+        ## 用途
+        - 监控服务健康状态
+        - 检查服务运行时间
+        - 验证 API 连接正常
+      operationId: healthCheck
+      responses:
+        '200':
+          description: 服务运行正常
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: 服务不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: 用户登录 (User Login)
+      description: |
+        使用用户名和密码获取 JWT 访问令牌。
+        返回 Access Token 和 Refresh Token。
+        
+        ## 测试账号
+        - **管理员**: username=`admin`, password=`admin123`
+        - **操作员**: username=`operator`, password=`operator123`
+        
+        ## 用途
+        - 获取 API 访问权限
+        - 获取用户权限信息
+        - Token 刷新和撤销
+      operationId: userLogin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              {
+                "username": "admin",
+                "password": "admin123"
+              }
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: 认证失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                {
+                  "error": "Invalid credentials",
+                  "statusCode": 401,
+                  "timestamp": "2026-04-09T16:13:00.000Z"
+                }
+        '429':
+          description: 请求频率过高
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/agents:
+    get:
+      tags:
+        - Agents
+      summary: 获取 Agent 列表
+      description: |
+        获取所有注册的 Agent 列表，支持分页和过滤查询。
+        需要有效的 Access Token。
+      operationId: listAgents
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          description: 页码，默认 1
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          description: 每页数量，默认 10，最大 100
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: status
+          in: query
+          description: 按状态过滤 (running, stopped, testing, error)
+          required: false
+          schema:
+            type: string
+            enum: [running, stopped, testing, error]
+        - name: domain
+          in: query
+          description: 按领域过滤 (production, testing, dev)
+          required: false
+          schema:
+            type: string
+            enum: [production, testing, dev]
+        - name: search
+          in: query
+          description: 按名称或 ID 搜索
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Agent 列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentListResponse'
+        '401':
+          description: 未认证
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/agents/{id}:
+    get:
+      tags:
+        - Agents
+      summary: 获取 Agent 详情
+      description: |
+        获取指定 ID 的 Agent 详细信息。
+        需要有效的 Access Token。
+      operationId: getAgentById
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Agent ID
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+            pattern: ^[a-zA-Z0-9_-]+$
+      responses:
+        '200':
+          description: Agent 详细信息
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentDetailResponse'
+        '401':
+          description: 未认证
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Agent 未找到
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                {
+                  "error": "Agent not found",
+                  "statusCode": 404,
+                  "timestamp": "2026-04-09T16:13:00.000Z"
+                }
+
+    post:
+      tags:
+        - Agents
+      summary: 注册新 Agent (Register New Agent)
+      description: |
+        注册一个新的 Agent 到注册中心。
+        
+        **需要 `agent:create` 权限**。
+        
+        ## 参数说明
+        - `id`: Agent 唯一标识 (3-64 字符)
+        - `name`: Agent 名称 (1-128 字符)
+        - `version`: 版本号 (语义化版本格式)
+        - `domain`: 应用领域 (production/testing/dev)
+        - `author`: 作者标识
+        
+        ## 用途
+        - 注册新的 Agent 实例
+        - 初始化 Agent 元数据
+        - 设置初始权限
+      operationId: registerAgent
+      security:
+        - BearerAuth:
+            - agent:create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentRegisterRequest'
+            example:
+              {
+                "id": "lobster-agent-v1.0",
+                "name": "Lobster GitHub Review Agent",
+                "version": "1.0.0",
+                "domain": "devops",
+                "author": "KVIP886",
+                "description": "基于 GitHub Agent HQ 的审查 Agent",
+                "metadata": {
+                  "capabilities": ["review", "code-analysis", "ci-cd"],
+                  "dependencies": ["git", "github-api"]
+                }
+              }
+      responses:
+        '201':
+          description: Agent 注册成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentRegisterResponse'
+        '400':
+          description: 请求参数错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                {
+                  "error": "Agent ID already exists",
+                  "statusCode": 400,
+                  "timestamp": "2026-04-09T16:13:00.000Z"
+                }
+        '401':
+          description: 未认证
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      tags:
+        - Agents
+      summary: 更新 Agent 信息
+      description: |
+        更新指定 Agent 的信息。
+        需要 agent_admin 或 agent_operator 权限。
+      operationId: updateAgent
+      security:
+        - BearerAuth:
+            - agent:update
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Agent ID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentUpdateRequest'
+      responses:
+        '200':
+          description: Agent 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentDetailResponse'
+        '400':
+          description: 请求参数错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: 未认证
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Agent 未找到
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      tags:
+        - Agents
+      summary: 删除 Agent
+      description: |
+        删除指定的 Agent。
+        需要 agent_admin 权限。
+      operationId: deleteAgent
+      security:
+        - BearerAuth:
+            - agent:delete
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Agent ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Agent 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteResponse'
+        '401':
+          description: 未认证
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Agent 未找到
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/agents/{id}/permissions:
+    post:
+      tags:
+        - Permissions
+      summary: 设置 Agent 权限
+      description: |
+        为指定的 Agent 设置或更新权限配置。
+        需要 agent_admin 或 agent_operator 权限。
+      operationId: setAgentPermissions
+      security:
+        - BearerAuth:
+            - permission:manage
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Agent ID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PermissionUpdateRequest'
+            example:
+              {
+                "permissions": ["agent:read", "agent:deploy"],
+                "roles": ["agent_operator"],
+                "scope": "self"
+              }
+      responses:
+        '200':
+          description: 权限设置成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PermissionUpdateResponse'
+        '400':
+          description: 请求参数错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: 未认证
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Agent 未找到
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/agents/{id}/deploy:
+    post:
+      tags:
+        - Deployments
+      summary: 部署 Agent (Deploy Agent)
+      description: |
+        部署指定的 Agent 到目标环境。
+        
+        **需要 `agent:deploy` 权限**。
+        
+        ## 参数说明
+        - `environment`: 目标环境 (development/staging/production)
+        - `endpoint`: 部署目标地址
+        - `deployment_type`: 部署类型 (docker/kubernetes/container/bare-metal)
+        - `config`: 部署配置 (副本数、资源限制等)
+        - `notes`: 部署备注
+        
+        ## 用途
+        - 将 Agent 部署到生产/测试环境
+        - 配置部署参数和资源限制
+        - 跟踪部署状态
+      operationId: deployAgent
+      security:
+        - BearerAuth:
+            - agent:deploy
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Agent ID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeploymentRequest'
+            example:
+              {
+                "environment": "production",
+                "endpoint": "http://agent.example.com:3000",
+                "deployment_type": "docker",
+                "config": {
+                  "replicas": 3,
+                  "cpu_limit": "1000m",
+                  "memory_limit": "2Gi"
+                },
+                "notes": "Production deployment with load balancing"
+              }
+      responses:
+        '202':
+          description: 部署请求已接受
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeploymentResponse'
+        '400':
+          description: 请求参数错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: 未认证
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Agent 未找到
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/agents/health:
+    get:
+      tags:
+        - Health
+      summary: 获取 Agent 健康状态
+      description: |
+        获取系统中所有 Agent 的健康状态汇总。
+        需要 agent_viewer 或更高权限。
+      operationId: getAgentsHealth
+      security:
+        - BearerAuth:
+            - agent:health
+      responses:
+        '200':
+          description: 健康状态列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatusResponse'
+        '401':
+          description: 未认证
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT Bearer Token，从 /api/v1/auth/login 获取
+
+  schemas:
+    # ========== Response Schemas ==========
+    
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - timestamp
+        - uptime
+        - version
+      properties:
+        status:
+          type: string
+          enum: [healthy, unhealthy]
+          example: healthy
+        timestamp:
+          type: string
+          format: date-time
+          example: "2026-04-09T16:13:00.000Z"
+        uptime:
+          type: number
+          format: float
+          example: 86400.5
+          description: 服务运行时间（秒）
+        version:
+          type: string
+          example: "1.0.0"
+
+    LoginRequest:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 64
+          example: admin
+        password:
+          type: string
+          minLength: 6
+          maxLength: 128
+          example: admin123
+
+    LoginResponse:
+      type: object
+      required:
+        - token
+        - expires_in
+        - token_type
+      properties:
+        token:
+          type: string
+          format: jwt
+          description: JWT Access Token
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJhZG1pbiIsImlhdCI6MTcxNzA0MDAwMCwiZXhwIjoxNzE3MTI2NDAwfQ.abc123xyz"
+        expires_in:
+          type: integer
+          description: Token 过期时间（秒）
+          example: 86400
+        token_type:
+          type: string
+          enum: [Bearer]
+          example: Bearer
+        user:
+          $ref: '#/components/schemas/UserInfo'
+
+    UserInfo:
+      type: object
+      required:
+        - id
+        - username
+        - permissions
+      properties:
+        id:
+          type: string
+          example: "admin"
+        username:
+          type: string
+          example: admin
+        permissions:
+          type: array
+          items:
+            type: string
+          example: ["agent_admin", "agent_operator", "agent_viewer"]
+        roles:
+          type: string
+          example: "admin"
+        roleNames:
+          type: array
+          items:
+            type: string
+          example: ["System Administrator", "Agent Administrator"]
+
+    AgentListResponse:
+      type: object
+      required:
+        - data
+        - total
+        - page
+        - limit
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Agent'
+        total:
+          type: integer
+          description: 总记录数
+          example: 5
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 10
+
+    AgentDetailResponse:
+      type: object
+      required:
+        - agent
+      properties:
+        agent:
+          $ref: '#/components/schemas/Agent'
+
+    AgentRegisterResponse:
+      type: object
+      required:
+        - agent
+        - message
+      properties:
+        agent:
+          $ref: '#/components/schemas/Agent'
+        message:
+          type: string
+          example: "Agent registered successfully"
+
+    AgentUpdateResponse:
+      type: object
+      required:
+        - agent
+        - message
+      properties:
+        agent:
+          $ref: '#/components/schemas/Agent'
+        message:
+          type: string
+          example: "Agent updated successfully"
+
+    DeleteResponse:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          example: "Agent deleted successfully"
+
+    PermissionUpdateResponse:
+      type: object
+      required:
+        - permissions
+        - message
+      properties:
+        permissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Permission'
+        message:
+          type: string
+          example: "Permissions updated successfully"
+
+    DeploymentResponse:
+      type: object
+      required:
+        - deployment
+        - message
+      properties:
+        deployment:
+          $ref: '#/components/schemas/Deployment'
+        message:
+          type: string
+          example: "Deployment initiated successfully"
+
+    HealthStatusResponse:
+      type: object
+      required:
+        - status
+        - agents
+      properties:
+        status:
+          type: string
+          enum: [healthy, unhealthy]
+          example: healthy
+        totalAgents:
+          type: integer
+          example: 5
+        healthyAgents:
+          type: integer
+          example: 4
+        unhealthyAgents:
+          type: integer
+          example: 1
+        agents:
+          type: array
+          items:
+            $ref: '#/components/schemas/AgentHealthStatus'
+
+    # ========== Request Schemas ==========
+    
+    AgentRegisterRequest:
+      type: object
+      required:
+        - id
+        - name
+        - version
+        - domain
+        - author
+      properties:
+        id:
+          type: string
+          minLength: 3
+          maxLength: 64
+          pattern: ^[a-zA-Z0-9_-]+$
+          example: lobster-agent-v1.0
+        name:
+          type: string
+          minLength: 1
+          maxLength: 128
+          example: Lobster GitHub Review Agent
+        version:
+          type: string
+          minLength: 1
+          maxLength: 32
+          pattern: ^[0-9]+\.[0-9]+\.[0-9]+$
+          example: 1.0.0
+        domain:
+          type: string
+          enum: [production, testing, dev]
+          example: devops
+        author:
+          type: string
+          minLength: 1
+          maxLength: 64
+          example: KVIP886
+        description:
+          type: string
+          maxLength: 512
+          example: "基于 GitHub Agent HQ 的审查 Agent"
+        metadata:
+          type: object
+          additionalProperties: true
+          example:
+            capabilities: ["review", "code-analysis", "ci-cd"]
+            dependencies: ["git", "github-api"]
+
+    AgentUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 128
+        version:
+          type: string
+          minLength: 1
+          maxLength: 32
+        description:
+          type: string
+          maxLength: 512
+        status:
+          type: string
+          enum: [running, stopped, testing, error]
+        metadata:
+          type: object
+          additionalProperties: true
+
+    PermissionUpdateRequest:
+      type: object
+      required:
+        - permission_type
+        - resource_type
+        - scope
+      properties:
+        permission_type:
+          type: string
+          enum:
+            - agent:create
+            - agent:read
+            - agent:update
+            - agent:delete
+            - agent:deploy
+            - agent:undeploy
+            - agent:audit
+            - permission:manage
+            - permission:read
+            - config:manage
+            - config:read
+            - config:read:readonly
+            - system:admin
+            - health:status
+            - health:monitor
+            - agent:health
+            - agent:logs
+            - agent:logs:readonly
+          example: agent:read
+        resource_type:
+          type: string
+          example: agent
+        scope:
+          type: string
+          enum: [self, team, organization]
+          example: self
+
+    DeploymentRequest:
+      type: object
+      required:
+        - environment
+        - endpoint
+      properties:
+        environment:
+          type: string
+          enum: [development, staging, production]
+          example: production
+        endpoint:
+          type: string
+          format: uri
+          example: "http://agent.example.com:3000"
+        deployment_type:
+          type: string
+          enum: [docker, kubernetes, container, bare-metal]
+          example: docker
+        config:
+          type: object
+          additionalProperties: true
+          example:
+            replicas: 3
+            cpu_limit: "1000m"
+            memory_limit: "2Gi"
+        notes:
+          type: string
+          maxLength: 512
+
+    # ========== Model Schemas ==========
+    
+    Agent:
+      type: object
+      required:
+        - id
+        - name
+        - version
+        - domain
+        - author
+        - status
+      properties:
+        id:
+          type: string
+          example: lobster-agent-v1.0
+        name:
+          type: string
+          example: Lobster GitHub Review Agent
+        version:
+          type: string
+          example: "1.0.0"
+        domain:
+          type: string
+          enum: [production, testing, dev]
+          example: devops
+        author:
+          type: string
+          example: KVIP886
+        description:
+          type: string
+          example: "基于 GitHub Agent HQ 的审查 Agent"
+        status:
+          type: string
+          enum: [running, stopped, testing, error]
+          example: testing
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-04-09T16:00:00.000Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2026-04-09T16:13:00.000Z"
+        metadata:
+          type: object
+          additionalProperties: true
+          example:
+            capabilities: ["review", "code-analysis"]
+            dependencies: ["git"]
+
+    AgentHealthStatus:
+      type: object
+      required:
+        - id
+        - status
+        - last_check
+      properties:
+        id:
+          type: string
+          example: lobster-agent-v1.0
+        name:
+          type: string
+          example: Lobster GitHub Review Agent
+        status:
+          type: string
+          enum: [healthy, unhealthy, unknown]
+          example: healthy
+        last_check:
+          type: string
+          format: date-time
+          example: "2026-04-09T16:13:00.000Z"
+        response_time_ms:
+          type: integer
+          example: 150
+        uptime_percentage:
+          type: number
+          format: float
+          example: 99.9
+
+    Permission:
+      type: object
+      required:
+        - id
+        - agent_id
+        - permission_type
+        - resource_type
+      properties:
+        id:
+          type: integer
+          example: 1
+        agent_id:
+          type: string
+          example: lobster-agent-v1.0
+        permission_type:
+          type: string
+          example: agent:read
+        resource_type:
+          type: string
+          example: agent
+        scope:
+          type: string
+          example: self
+        created_at:
+          type: string
+          format: date-time
+
+    Deployment:
+      type: object
+      required:
+        - id
+        - agent_id
+        - environment
+        - endpoint
+        - status
+      properties:
+        id:
+          type: integer
+          example: 1
+        agent_id:
+          type: string
+          example: lobster-agent-v1.0
+        deployment_type:
+          type: string
+          example: docker
+        environment:
+          type: string
+          enum: [development, staging, production]
+          example: production
+        endpoint:
+          type: string
+          example: "http://agent.example.com:3000"
+        status:
+          type: string
+          enum: [pending, running, failed, completed]
+          example: pending
+        config:
+          type: object
+          additionalProperties: true
+        notes:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    Error:
+      type: object
+      required:
+        - error
+        - statusCode
+        - timestamp
+      properties:
+        error:
+          type: string
+          description: 错误描述
+          example: "Invalid credentials"
+        statusCode:
+          type: integer
+          description: HTTP 状态码
+          example: 401
+        timestamp:
+          type: string
+          format: date-time
+          description: 错误发生时间
+          example: "2026-04-09T16:13:00.000Z"
+
+  responses:
+    Unauthorized:
+      description: 未认证
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: 权限不足
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: 资源未找到
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    BadRequest:
+      description: 请求参数错误
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+security:
+  - BearerAuth: []

@@ -1,0 +1,144 @@
+# Agent Registry - Kubernetes Horizontal Pod Autoscaler
+# Version: 1.0.0
+# Date: 2026-04-10 (Week 5 Day 5)
+
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: agent-registry-hpa
+  labels:
+    app: agent-registry
+spec:
+  # Target deployment
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: agent-registry
+  
+  # Minimum and maximum replicas
+  minReplicas: 3
+  maxReplicas: 10
+  
+  # Metrics configuration
+  metrics:
+  # CPU utilization metric
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  
+  # Memory utilization metric
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  
+  # Custom metrics (if using Prometheus)
+  # - type: Pods
+  #   pods:
+  #     metric:
+  #       name: requests_per_second
+  #     target:
+  #       type: AverageValue
+  #       averageValue: "100"
+  
+  # Behavior configuration
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 10
+        periodSeconds: 60
+      - type: Pods
+        value: 1
+        periodSeconds: 60
+      selectPolicy: Min
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15
+      - type: Pods
+        value: 4
+        periodSeconds: 15
+      selectPolicy: Max
+
+---
+
+# ============================================
+# Horizontal Pod Autoscaler: Database
+# ============================================
+
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: postgres-db-hpa
+  labels:
+    app: postgres-db
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: postgres-db
+  minReplicas: 1
+  maxReplicas: 1
+  # StatefulSets don't scale horizontally by default
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 80
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 85
+
+---
+
+# ============================================
+# Horizontal Pod Autoscaler: Redis
+# ============================================
+
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: redis-cache-hpa
+  labels:
+    app: redis-cache
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: redis-cache
+  minReplicas: 1
+  maxReplicas: 3
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 80
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 85
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 600
+      policies:
+      - type: Percent
+        value: 10
+        periodSeconds: 120

@@ -150,6 +150,20 @@ class AuthManager {
       { expiresIn: duration }
     );
   }
+
+  /**
+   * 哈希密码
+   */
+  hashPassword(password) {
+    return bcrypt.hashSync(password, 10);
+  }
+
+  /**
+   * 哈希 API Key
+   */
+  hashApiKey(apiKey) {
+    return bcrypt.hashSync(apiKey, 10);
+  }
 }
 
-module.exports = new AuthManager();
+module.exports = AuthManager;

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OpenClaw Agent Registry API Documentation</title>
+  <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css">
+  <style>
+    html {
+      box-sizing: border-box;
+      overflow: -moz-scrollbars-vertical;
+      overflow-y: scroll;
+    }
+    *, *:before, *:after {
+      box-sizing: inherit;
+    }
+    body {
+      margin: 0;
+      background: #f8f9fa;
+    }
+    .swagger-ui .topbar {
+      background-color: #1a73e8;
+      padding: 1rem 2rem;
+    }
+    .swagger-ui .topbar .wrapper {
+      max-width: 1600px;
+    }
+    .swagger-ui .topbar .download-url-wrapper .download-url-button {
+      background: #34a09c;
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      font-weight: 600;
+    }
+    .swagger-ui .info {
+      margin: 2rem 0;
+      padding: 2rem;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .swagger-ui .info .title {
+      font-size: 2.5rem;
+      color: #1a73e8;
+      margin-bottom: 1rem;
+    }
+    .swagger-ui .info .description {
+      font-size: 1.1rem;
+      line-height: 1.6;
+      color: #5f6368;
+    }
+    .swagger-ui .info .version {
+      font-size: 1.5rem;
+      color: #34a09c;
+    }
+    .swagger-ui .info .base-url {
+      margin-top: 1rem;
+      padding: 1rem;
+      background: #f1f3f4;
+      border-radius: 6px;
+      font-family: monospace;
+    }
+    .swagger-ui .info .license {
+      margin-top: 2rem;
+      padding: 1rem;
+      background: #e8f0fe;
+      border-radius: 6px;
+    }
+    @media (max-width: 768px) {
+      .swagger-ui .info .title {
+        font-size: 2rem;
+      }
+      .swagger-ui .info {
+        margin: 1rem;
+        padding: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="swagger-ui"></div>
+
+  <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+  <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-standalone-preset.js"></script>
+  <script>
+    window.onload = function() {
+      // 加载本地 YAML 文件
+      const yamlUrl = './openapi.yaml';
+      
+      SwaggerUIBundle({
+        url: yamlUrl,
+        dom_id: '#swagger-ui',
+        presets: [
+          SwaggerUIBundle.presets.apis,
+          SwaggerUIStandalonePreset
+        ],
+        plugins: [
+          SwaggerUIBundle.plugins.DownloadUrl
+        ],
+        layout: "StandaloneLayout",
+        deepLinking: true,
+        showExtensions: true,
+        showCommonExtensions: true,
+        filter: true,
+        validatorUrl: null,
+        onComplete: function() {
+          console.log('API Documentation loaded successfully!');
+        },
+        onFailure: function(msg, err) {
+          console.error('Failed to load API documentation:', msg, err);
+          document.getElementById('swagger-ui').innerHTML = 
+            '<div style="padding: 2rem; text-align: center; color: #d93025;"><h2>加载失败</h2><p>请确保 <code>openapi.yaml</code> 文件在 <code>docs/</code> 目录中。</p><p>错误：' + err + '</p></div>';
+        }
+      });
+
+      // 在页面上添加自定义信息
+      setTimeout(() => {
+        const infoSection = document.querySelector('.swagger-ui .info');
+        if (infoSection) {
+          const customInfo = document.createElement('div');
+          customInfo.className = 'custom-api-info';
+          customInfo.innerHTML = `
+            <h2 style="margin-top: 2rem; color: #1a73e8;">📚 API 文档说明</h2>
+            <p><strong>OpenClaw Agent Registry v1.0.0</strong> - 企业级 Agent 注册和管理中心</p>
+            
+            <h3 style="margin-top: 2rem; color: #34a09c;">主要功能</h3>
+            <ul>
+              <li><strong>Agent 注册管理</strong>: 完整的 Agent 注册、更新、删除功能</li>
+              <li><strong>RBAC 权限控制</strong>: 基于角色的访问控制，支持 8 种预定义角色</li>
+              <li><strong>JWT 认证</strong>: 标准的 JWT Token 认证机制</li>
+              <li><strong>审计日志</strong>: 所有操作自动记录，支持追溯和查询</li>
+              <li><strong>健康检查</strong>: 实时服务状态监控</li>
+            </ul>
+
+            <h3 style="margin-top: 2rem; color: #34a09c;">🔐 认证方式</h3>
+            <p>使用 Bearer Token 进行认证，在请求头中包含：</p>
+            <pre style="background: #f1f3f4; padding: 1rem; border-radius: 6px; overflow-x: auto;">
+Authorization: Bearer YOUR_ACCESS_TOKEN
+            </pre>
+            <p style="margin-top: 1rem;">从 <code>POST /api/v1/auth/login</code> 获取 Token</p>
+
+            <h3 style="margin-top: 2rem; color: #34a09c;">👥 测试账号</h3>
+            <table style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+              <thead>
+                <tr style="background: #1a73e8; color: white;">
+                  <th style="padding: 0.75rem; border: 1px solid #ddd;">角色</th>
+                  <th style="padding: 0.75rem; border: 1px solid #ddd;">用户名</th>
+                  <th style="padding: 0.75rem; border: 1px solid #ddd;">密码</th>
+                  <th style="padding: 0.75rem; border: 1px solid #ddd;">权限</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="padding: 0.75rem; border: 1px solid #ddd; background: #e8f0fe;">Administrator</td>
+                  <td style="padding: 0.75rem; border: 1px solid #ddd;">admin</td>
+                  <td style="padding: 0.75rem; border: 1px solid #ddd;">admin123</td>
+                  <td style="padding: 0.75rem; border: 1px solid #ddd;">agent_admin, agent_operator, agent_viewer</td>
+                </tr>
+                <tr>
+                  <td style="padding: 0.75rem; border: 1px solid #ddd; background: #e6f4ea;">Operator</td>
+                  <td style="padding: 0.75rem; border: 1px solid #ddd;">operator</td>
+                  <td style="padding: 0.75rem; border: 1px solid #ddd;">operator123</td>
+                  <td style="padding: 0.75rem; border: 1px solid #ddd;">agent_operator</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <h3 style="margin-top: 2rem; color: #34a09c;">🚀 快速开始</h3>
+            <ol>
+              <li><strong>1. 启动服务</strong>: <code>npm start</code></li>
+              <li><strong>2. 登录获取 Token</strong>: 
+                <pre style="background: #f1f3f4; padding: 0.5rem; border-radius: 4px; font-size: 0.9rem;">
+curl -X POST http://localhost:1111/api/v1/auth/login \\
+  -H "Content-Type: application/json" \\
+  -d '{"username":"admin","password":"admin123"}'
+                </pre>
+              </li>
+              <li><strong>3. 使用 Token 访问 API</strong>:
+                <pre style="background: #f1f3f4; padding: 0.5rem; border-radius: 4px; font-size: 0.9rem;">
+curl -X POST http://localhost:1111/api/v1/agents/register \\
+  -H "Authorization: Bearer YOUR_TOKEN" \\
+  -H "Content-Type: application/json" \\
+  -d '{"id":"test-agent","name":"Test","version":"1.0.0","domain":"testing","author":"admin"}'
+                </pre>
+              </li>
+            </ol>
+
+            <h3 style="margin-top: 2rem; color: #34a09c;">📞 支持</h3>
+            <p><strong>GitHub Repository</strong>: <a href="https://github.com/KVIP886/openclaw-agent-registry" target="_blank">https://github.com/KVIP886/openclaw-agent-registry</a></p>
+            <p><strong>技术支持</strong>: support@openclaw.ai</p>
+            <p><strong>版本</strong>: v1.0.0 (2026-04-09)</p>
+          `;
+          
+          const firstInfo = document.querySelector('.swagger-ui .info');
+          if (firstInfo) {
+            firstInfo.parentNode.insertBefore(customInfo, firstInfo.nextSibling);
+          }
+        }
+      }, 1000);
+    };
+  </script>
+</body>
+</html>
