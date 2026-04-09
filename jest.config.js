@@ -1,23 +1,23 @@
 /**
- * Jest Configuration
- * OpenClaw Agent Registry v1.0.0
+ * Jest Configuration for OpenClaw Agent Registry
+ * Phase 2: AI Video Generation
  */
 
 module.exports = {
   testEnvironment: 'node',
   roots: ['<rootDir>/tests'],
-  testMatch: ['**/__tests__/**/*.js', '**/?(*.)+(spec|test).js'],
-  verbose: true,
+  testMatch: ['**/*.test.js'],
+  transform: {
+    '^.+\\.js$': 'babel-jest'
+  },
   coverageDirectory: 'coverage',
   collectCoverageFrom: [
     'src/**/*.js',
-    '!src/index.js',
-    '!src/**/*.config.js'
+    '!src/**/index.js'
   ],
   coverageReporters: ['text', 'lcov', 'html'],
+  testTimeout: 30000, // 30 seconds for AI operations
   setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
-  moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/src/$1'
-  },
-  testTimeout: 10000
+  verbose: true,
+  bail: false
 };

@@ -1,0 +1,48 @@
+{
+  "version": "1.0.0",
+  "backup_timestamp": "2026-04-10T00:11:00.000Z",
+  "backup_created_by": "OpenClaw AReaL Integration",
+  
+  "current_mode": {
+    "name": "qwen-128k-default",
+    "model_name": "qwen-128k:latest",
+    "context": "128k",
+    "quantization": "q4_k_m",
+    "gpu_usage": "~24-26GB",
+    "areal_config": {
+      "buffer": "medium",
+      "batch": 512,
+      "gradient_accumulation": 2,
+      "training_steps": 10000,
+      "quantization": "q4_k_m"
+    },
+    "status": "working",
+    "last_active": "2026-04-10T00:11:00.000Z"
+  },
+  
+  "ultra_mode": {
+    "name": "ultra-ultra-performance",
+    "model_name": "qwen-64k:latest",
+    "context": "16k",
+    "quantization": "q4_k_m",
+    "gpu_usage": "~12-15GB",
+    "areal_config": {
+      "buffer": "huge",
+      "batch": 4096,
+      "gradient_accumulation": 1,
+      "training_steps": 20000,
+      "quantization": "q4_k_m",
+      "learning_rate": 2.5e-5
+    },
+    "status": "ready",
+    "expected_speedup": "4.5-5.5x",
+    "created": "2026-04-10T00:11:00.000Z"
+  },
+  
+  "rollback_instructions": {
+    "how_to_rollback": "Simply switch back to 'qwen-128k:latest' model in Ollama",
+    "command": "ollama run qwen-128k",
+    "verify": "ollama show qwen-128k:latest",
+    "aereal_config": "Revert to buffer: medium, batch: 512, gradient_accumulation: 2"
+  }
+}

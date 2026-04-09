@@ -1,13 +1,16 @@
 {
   "name": "openclaw-agent-registry",
-  "version": "1.0.0",
-  "description": "OpenClaw Agent Registry - Agent 注册管理中心",
+  "version": "2.0.0-alpha",
+  "description": "OpenClaw Agent Registry with AI Video Generation - Phase 2",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
     "test": "jest",
-    "lint": "eslint src/"
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint src/",
+    "build": "node scripts/build-docs.js"
   },
   "keywords": [
     "agent",
