@@ -26,9 +26,19 @@ const db = {
 };
 
 // 确保数据目录存在
-const dataDir = path.join(__dirname, '..', 'data');
+// dataDir 指向项目根目录下的 data 文件夹
+// __dirname = .../src/database, 向上两级到达项目根目录
+const projectRoot = path.join(__dirname, '..', '..');
+const dataDir = path.join(projectRoot, 'data');
+console.log(`[DB] Project root: ${projectRoot}`);
+console.log(`[DB] Database directory: ${dataDir}`);
+console.log(`[DB] __dirname: ${__dirname}`);
+console.log(`[DB] Current working directory: ${process.cwd()}`);
 if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
+  console.log(`[DB] ✅ Created data directory: ${dataDir}`);
+} else {
+  console.log(`[DB] ✅ Data directory exists: ${dataDir}`);
 }
 
 // 加载持久化数据
@@ -56,15 +66,20 @@ function loadPersistedData() {
 // 持久化数据
 function persistData() {
   try {
+    console.log(`[PERSIST] Saving data to ${dataDir}`);
+    const filesWritten = [];
     Object.keys(db).forEach(key => {
       if (Array.isArray(db[key])) {
         const filePath = path.join(dataDir, `${key}.json`);
-        fs.writeFileSync(filePath, JSON.stringify(db[key], null, 2));
+        const data = JSON.stringify(db[key], null, 2);
+        fs.writeFileSync(filePath, data, 'utf8');
+        filesWritten.push(`${key}.json (${db[key].length} records)`);
       }
     });
+    console.log(`[PERSIST] ✅ Saved: ${filesWritten.join(', ')}`);
     return true;
   } catch (error) {
-    console.error('❌ Failed to persist data:', error.message);
+    console.error(`❌ Failed to persist data: ${error.message}`);
     return false;
   }
 }

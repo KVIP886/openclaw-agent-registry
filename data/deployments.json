@@ -1,0 +1,16 @@
+[
+  {
+    "id": 1,
+    "agent_id": "final-persist-test",
+    "deployment_type": "container",
+    "environment": "production",
+    "endpoint": "http://agent.local:3000",
+    "status": "pending",
+    "started_at": "2026-04-09T07:14:41.502Z",
+    "stopped_at": null,
+    "last_heartbeat": null,
+    "health_status": null,
+    "resource_usage": {},
+    "created_at": "2026-04-09T07:14:41.502Z"
+  }
+]

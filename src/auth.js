@@ -19,7 +19,13 @@ class AuthManager {
    * 生成访问令牌
    */
   generateAccessToken(payload) {
-    return jwt.sign(payload, JWT_SECRET, {
+    // 如果权限是数组，转换为逗号分隔的字符串以便 JWT 存储
+    const payloadCopy = { ...payload };
+    if (Array.isArray(payloadCopy.permissions)) {
+      payloadCopy.permissions = payloadCopy.permissions.join(' ');
+    }
+    
+    return jwt.sign(payloadCopy, JWT_SECRET, {
       expiresIn: TOKEN_EXPIRY,
       algorithm: 'HS256'
     });
@@ -45,7 +51,14 @@ class AuthManager {
         throw new Error('Token has been revoked');
       }
       
-      return jwt.verify(token, JWT_SECRET);
+      const decoded = jwt.verify(token, JWT_SECRET);
+      
+      // 如果权限是字符串，转换为数组
+      if (decoded.permissions && typeof decoded.permissions === 'string') {
+        decoded.permissions = decoded.permissions.split(' ');
+      }
+      
+      return decoded;
     } catch (error) {
       throw new Error('Invalid token');
     }

@@ -8,8 +8,14 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const bcrypt = require('bcryptjs');
 const db = require('./database/inMemoryDb');
 const auth = require('./auth');
+const RBACManager = require('./rbac');
+const AuditLogger = require('./auditLogger');
+
+const rbac = new RBACManager();
+const auditLog = new AuditLogger();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -54,11 +60,48 @@ const authenticate = async (req, res, next) => {
 // 权限检查中间件
 const checkPermission = (requiredPermission) => {
   return (req, res, next) => {
-    const userPermissions = req.user.permissions || [];
-    if (!userPermissions.includes(requiredPermission)) {
-      return res.status(403).json({ error: 'Insufficient permissions' });
+    const userId = req.user?.id;
+    const permissions = req.user.permissions || [];
+    
+    console.log(`[DEBUG] Permission Check: User=${userId}, Required=${requiredPermission}, Has=${JSON.stringify(permissions)}`);
+    
+    if (!userId) {
+      console.log(`[DEBUG] No user ID`);
+      return res.status(401).json({ error: 'Authentication required' });
     }
-    next();
+    
+    // 检查用户是否有直接权限
+    if (permissions.includes(requiredPermission)) {
+      console.log(`[DEBUG] Permission granted: ${requiredPermission}`);
+      next();
+      return;
+    }
+    
+    // 检查权限前缀匹配（如 'agent:create' 匹配 'agent:*'）
+    const prefixMatch = permissions.some(p => p.startsWith(requiredPermission.replace(':', '')));
+    if (prefixMatch) {
+      console.log(`[DEBUG] Permission granted by prefix: ${requiredPermission}`);
+      next();
+      return;
+    }
+    
+    // 检查管理员权限（agent_admin, system:admin 等）
+    if (requiredPermission.startsWith('agent:') || requiredPermission.startsWith('permission:') || requiredPermission.startsWith('config:') || requiredPermission === 'system:admin') {
+      const isAdminPermission = permissions.includes('system:admin') || permissions.includes('config:manage') || permissions.includes('permission:manage');
+      if (isAdminPermission) {
+        console.log(`[DEBUG] Permission granted by admin role: ${requiredPermission}`);
+        next();
+        return;
+      }
+    }
+    
+    console.log(`[DEBUG] Permission denied: ${requiredPermission} not found in ${JSON.stringify(permissions)}`);
+    return res.status(403).json({
+      error: 'Insufficient permissions',
+      required: requiredPermission,
+      userId,
+      permissions
+    });
   };
 };
 
@@ -67,7 +110,7 @@ const checkPermission = (requiredPermission) => {
  * 注册新 Agent
  * 权限：agent_admin
  */
-app.post('/api/v1/agents/register', authenticate, checkPermission('agent_admin'), (req, res) => {
+app.post('/api/v1/agents/register', authenticate, checkPermission('agent:admin'), (req, res) => {
   try {
     const { id, name, version, domain, description, author, metadata } = req.body;
 
@@ -113,9 +156,9 @@ app.post('/api/v1/agents/register', authenticate, checkPermission('agent_admin')
 /**
  * GET /api/v1/agents
  * 获取所有 Agent 列表
- * 权限：agent_operator
+ * 权限：agent:read
  */
-app.get('/api/v1/agents', authenticate, checkPermission('agent_operator'), (req, res) => {
+app.get('/api/v1/agents', authenticate, checkPermission('agent:read'), (req, res) => {
   try {
     const { status, domain, search } = req.query;
     
@@ -135,11 +178,49 @@ app.get('/api/v1/agents', authenticate, checkPermission('agent_operator'), (req,
 });
 
 /**
+ * GET /api/v1/agents/health
+ * 获取所有 Agent 健康状态
+ * 权限：health:monitor
+ */
+app.get('/api/v1/agents/health', authenticate, checkPermission('health:monitor'), (req, res) => {
+  try {
+    const agents = db.agents.getAll();
+    
+    const healthStatus = agents.map(agent => {
+      const deployments = db.deployments.getAll(agent.id);
+      const runningDeployments = deployments.filter(d => d.status === 'running');
+      
+      return {
+        id: agent.id,
+        name: agent.name,
+        version: agent.version,
+        status: agent.status,
+        deployments: runningDeployments.length,
+        health: runningDeployments.length > 0 ? 'healthy' : 'inactive'
+      };
+    });
+
+    res.json({
+      success: true,
+      data: healthStatus,
+      summary: {
+        total: healthStatus.length,
+        healthy: healthStatus.filter(h => h.health === 'healthy').length,
+        inactive: healthStatus.filter(h => h.health === 'inactive').length
+      }
+    });
+  } catch (error) {
+    console.error('Get health status error:', error);
+    res.status(500).json({ error: 'Failed to fetch health status' });
+  }
+});
+
+/**
  * GET /api/v1/agents/:id
  * 获取特定 Agent 详情
- * 权限：agent_observer
+ * 权限：agent:read
  */
-app.get('/api/v1/agents/:id', authenticate, checkPermission('agent_observer'), (req, res) => {
+app.get('/api/v1/agents/:id', authenticate, checkPermission('agent:read'), (req, res) => {
   try {
     const { id } = req.params;
     const agent = db.agents.getById(id);
@@ -175,9 +256,9 @@ app.get('/api/v1/agents/:id', authenticate, checkPermission('agent_observer'), (
 /**
  * POST /api/v1/agents/:id/permissions
  * 设置 Agent 权限
- * 权限：agent_admin
+ * 权限：permission:manage
  */
-app.post('/api/v1/agents/:id/permissions', authenticate, checkPermission('agent_admin'), (req, res) => {
+app.post('/api/v1/agents/:id/permissions', authenticate, checkPermission('permission:manage'), (req, res) => {
   try {
     const { id } = req.params;
     const { permissions } = req.body;
@@ -204,9 +285,15 @@ app.post('/api/v1/agents/:id/permissions', authenticate, checkPermission('agent_
       });
     });
 
+    // 获取更新的权限
+    const updatedPermissions = db.permissions.getAll(id);
+
     res.json({
       success: true,
-      message: 'Permissions updated successfully'
+      message: 'Permissions updated successfully',
+      data: {
+        permissions: updatedPermissions
+      }
     });
   } catch (error) {
     console.error('Set permissions error:', error);
@@ -217,9 +304,9 @@ app.post('/api/v1/agents/:id/permissions', authenticate, checkPermission('agent_
 /**
  * GET /api/v1/agents/health
  * 获取所有 Agent 健康状态
- * 权限：agent_observer
+ * 权限：health:monitor
  */
-app.get('/api/v1/agents/health', authenticate, checkPermission('agent_observer'), (req, res) => {
+app.get('/api/v1/agents/health', authenticate, checkPermission('health:monitor'), (req, res) => {
   try {
     const agents = db.agents.getAll();
     
@@ -255,9 +342,9 @@ app.get('/api/v1/agents/health', authenticate, checkPermission('agent_observer')
 /**
  * POST /api/v1/agents/:id/deploy
  * 部署 Agent
- * 权限：agent_admin
+ * 权限：agent:deploy
  */
-app.post('/api/v1/agents/:id/deploy', authenticate, checkPermission('agent_admin'), (req, res) => {
+app.post('/api/v1/agents/:id/deploy', authenticate, checkPermission('agent:deploy'), (req, res) => {
   try {
     const { id } = req.params;
     const { deployment_type, environment, endpoint } = req.body;
@@ -295,7 +382,7 @@ app.post('/api/v1/agents/:id/deploy', authenticate, checkPermission('agent_admin
  * POST /api/v1/auth/login
  * 用户登录
  */
-app.post('/api/v1/auth/login', (req, res) => {
+app.post('/api/v1/auth/login', async (req, res) => {
   try {
     const { username, password } = req.body;
     
@@ -304,36 +391,59 @@ app.post('/api/v1/auth/login', (req, res) => {
       'admin': {
         id: 'admin',
         username: 'admin',
-        permissions: ['agent_admin', 'agent_operator', 'agent_observer'],
         passwordHash: bcrypt.hashSync(password || 'admin123', 10)
       },
       'operator': {
         id: 'operator',
         username: 'operator',
-        permissions: ['agent_operator'],
         passwordHash: bcrypt.hashSync(password || 'operator123', 10)
       }
     };
 
     const user = mockUsers[username];
     if (!user) {
+      await auditLog.login(username, username, false, { ip: req.ip });
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     const passwordValid = bcrypt.compareSync(password || '', user.passwordHash);
     if (!passwordValid) {
+      await auditLog.login(username, username, false, { ip: req.ip });
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    const accessToken = auth.generateAccessToken(user);
+    // 分配角色
+    const roleMap = {
+      'admin': 'agent_admin',
+      'operator': 'agent_operator'
+    };
+    
+    rbac.assignRoleToUser(user.id, roleMap[username]);
+    
+    const userPermissions = rbac.getUserPermissions(user.id);
+    
+    const accessToken = auth.generateAccessToken({
+      ...user,
+      permissions: userPermissions.permissions
+    });
+    
     const refreshToken = auth.generateRefreshToken({ userId: user.id, type: 'refresh' });
+
+    await auditLog.login(user.id, username, true, { ip: req.ip });
 
     res.json({
       success: true,
       data: {
         accessToken,
         refreshToken,
-        expiresIn: '30d'
+        expiresIn: '30d',
+        user: {
+          id: user.id,
+          username: user.username,
+          permissions: userPermissions.permissions,
+          roles: userPermissions.roles,
+          roleNames: userPermissions.roleDetails.map(r => r.roleName)
+        }
       }
     });
   } catch (error) {
