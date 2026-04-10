@@ -124,14 +124,20 @@ async function generateLobsterVideo(scenarioName) {
   // Generate enhanced prompt
   const enhancedPrompt = await generateSmartPrompt(scenarioName || 'underwater');
   
-  // Select best provider
-  const providerName = config.providers.wan.enabled 
-    ? 'wan' 
-    : config.providers.seedance.enabled 
-      ? 'seedance' 
-      : 'veo3';
+  // Select best provider based on quality and availability
+  // Priority: Veo3 (best quality) → Seedance (value) → Wan (free)
+  let providerName = 'veo3'; // Default fallback
+  
+  if (config.providers.veo3.enabled) {
+    providerName = 'veo3'; // Best quality, 2026 standard
+  } else if (config.providers.seedance.enabled) {
+    providerName = 'seedance'; // Best value, Chinese optimized
+  } else if (config.providers.wan.enabled) {
+    providerName = 'wan'; // Free tier, good for testing
+  }
   
   console.log(`\n🏷️  Using provider: ${providerName.toUpperCase()}`);
+  console.log(`   Quality: ${providerName === 'veo3' ? 'Best (2026 standard)' : providerName === 'seedance' ? 'Value' : 'Free'}`);
   
   // Initialize video generator
   const videoGen = new VideoGenerator({
@@ -144,15 +150,35 @@ async function generateLobsterVideo(scenarioName) {
   
   try {
     const startTime = Date.now();
+    const maxRetries = 3;
+    let retryCount = 0;
+    let result;
     
-    const result = await videoGen.generateTextToVideo(
-      enhancedPrompt.enhancedDescription,
-      {
-        duration: enhancedPrompt.duration || scenario.duration,
-        resolution: enhancedPrompt.resolution || scenario.resolution,
-        sessionId: `lobster_${scenarioName || 'random'}`
+    // Retry loop for failed API calls
+    while (retryCount < maxRetries) {
+      try {
+        result = await videoGen.generateTextToVideo(
+          enhancedPrompt.enhancedDescription,
+          {
+            duration: enhancedPrompt.duration || scenario.duration,
+            resolution: enhancedPrompt.resolution || scenario.resolution,
+            sessionId: `lobster_${scenarioName || 'random'}`
+          }
+        );
+        break; // Success, exit retry loop
+      } catch (retryError) {
+        retryCount++;
+        console.log(`⚠️  Generation attempt ${retryCount} failed: ${retryError.message}`);
+        
+        if (retryCount >= maxRetries) {
+          console.log(`❌ All ${maxRetries} attempts failed. Fallback to next provider.`);
+          throw retryError;
+        }
+        
+        console.log(`🔄 Retrying... (${retryCount}/${maxRetries})`);
+        await new Promise(resolve => setTimeout(resolve, 1000 * retryCount)); // Exponential backoff
       }
-    );
+    }
     
     const generationTime = (Date.now() - startTime) / 1000;
     
