@@ -186,7 +186,7 @@ class EmergencyRecovery {
       execSync('powershell -Command "Restart-Service ollama -ErrorAction SilentlyContinue"', { stdio: 'inherit' });
       
       // 重启 OpenClaw Gateway (如果运行)
-      execSync('powershell -Command "Restart-Process -Name 'openclaw-gateway' -ErrorAction SilentlyContinue"', { stdio: 'inherit' });
+      execSync('powershell -Command "Restart-Process -Name openclaw-gateway -ErrorAction SilentlyContinue"', { stdio: 'inherit' });
       
       console.log('✅ 服务重启完成');
     } catch (error) {

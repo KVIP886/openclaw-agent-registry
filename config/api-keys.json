@@ -1,0 +1,62 @@
+{
+  "description": "Video Generation API Keys Configuration",
+  "version": "2.0.0",
+  "lastUpdated": "2026-04-10",
+  "providers": {
+    "veo3": {
+      "name": "Google Veo 3.1",
+      "apiKey": "YOUR_GOOGLE_VEO_API_KEY_HERE",
+      "apiEndpoint": "https://generativelanguage.googleapis.com/v1beta",
+      "enabled": false,
+      "cost": "highest",
+      "notes": "Requires Google Cloud account with Vertex AI enabled"
+    },
+    "seedance": {
+      "name": "BytePlus Seedance",
+      "apiKey": "YOUR_SEEDANCE_API_KEY_HERE",
+      "apiEndpoint": "https://api.volcengine.com/v1",
+      "enabled": false,
+      "cost": "low",
+      "notes": "Best value for money, Chinese optimized"
+    },
+    "wan": {
+      "name": "Alibaba Wan",
+      "apiKey": "YOUR_ALIBABA_WAN_API_KEY_HERE",
+      "apiEndpoint": "https://dashscope.aliyun.com/api",
+      "enabled": false,
+      "cost": "free",
+      "notes": "Free tier available, Chinese optimized"
+    },
+    "runway": {
+      "name": "Runway Gen4.5",
+      "apiKey": "YOUR_RUNWAY_API_KEY_HERE",
+      "apiEndpoint": "https://api.runwayml.com/v1",
+      "enabled": false,
+      "cost": "medium",
+      "notes": "Professional quality, creative control"
+    },
+    "sora": {
+      "name": "OpenAI Sora 2",
+      "apiKey": "YOUR_OPENAI_SORA_API_KEY_HERE",
+      "apiEndpoint": "https://api.openai.com/v1",
+      "enabled": false,
+      "cost": "highest",
+      "notes": "Requires waitlist access"
+    },
+    "minimax": {
+      "name": "MiniMax Hailuo",
+      "apiKey": "YOUR_MINIMAX_API_KEY_HERE",
+      "apiEndpoint": "https://api.minimaxi.com/v1",
+      "enabled": false,
+      "cost": "low",
+      "notes": "Chinese optimized, good for mobile"
+    }
+  },
+  "globalSettings": {
+    "maxRetries": 3,
+    "timeoutMs": 30000,
+    "fallbackToMultipleProviders": true,
+    "healthCheckInterval": 300000,
+    "logLevel": "info"
+  }
+}
