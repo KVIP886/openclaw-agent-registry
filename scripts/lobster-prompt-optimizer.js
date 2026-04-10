@@ -115,16 +115,65 @@ class LobsterPromptOptimizer {
     const randomFactor = (category) => 
       this.enhancementFactors[category][Math.floor(Math.random() * this.enhancementFactors[category].length)];
     
+    // 2026 年优化：添加物理模拟和纹理细节
+    const physicsEnhancements = {
+      realistic: {
+        textures: 'textured shell, vibrant colors, detailed scales, natural patterns',
+        lighting: 'caustic light patterns, volumetric lighting, dynamic shadows',
+        motion: 'organic movement, buoyancy effects, realistic physics, smooth transitions',
+        environment: 'water currents, sediment drift, floating particles, depth of field'
+      },
+      cyberpunk: {
+        textures: 'glowing shell patterns, metallic accents, holographic elements, neon details',
+        lighting: 'neon glow, bioluminescent effects, dark blue/red contrast, volumetric fog',
+        motion: 'dynamic camera, motion blur, futuristic lens effects, high contrast',
+        environment: 'futuristic city, underwater ruins, floating particles, atmospheric depth'
+      },
+      animated: {
+        textures: 'smooth shell, cartoon-style colors, clean lines, appealing aesthetic',
+        lighting: 'bright, soft shadows, vibrant colors, stylized illumination',
+        motion: 'expressive animation, playful movements, character-driven motion',
+        environment: 'simplified background, colorful elements, whimsical atmosphere'
+      },
+      fantasy: {
+        textures: 'magical shell patterns, glowing runes, ancient textures, supernatural effects',
+        lighting: 'mystical glow, ethereal atmosphere, magical particles, supernatural illumination',
+        motion: 'epic scale, dramatic composition, magical movement, fantasy physics',
+        environment: 'magical temple, mystical waters, ancient ruins, supernatural elements'
+      },
+      documentary: {
+        textures: 'photorealistic shell, accurate colors, scientific detail, natural appearance',
+        lighting: 'natural underwater lighting, realistic colors, authentic illumination',
+        motion: 'documentary-style movement, realistic behavior, authentic underwater footage',
+        environment: 'natural habitat, realistic conditions, scientific accuracy, authentic setting'
+      }
+    };
+    
+    const physics = physicsEnhancements[style] || physicsEnhancements.realistic;
+    
     const enhanced = {
-      fullDescription: `A detailed AI video of a lobster with the following characteristics: ${idea}. ${stylePresets.lighting}, featuring ${motionTemplate}, rendered in ${stylePresets.quality} style with professional cinematography.`,
-      lighting: stylePresets.lighting,
+      fullDescription: `A detailed AI video featuring ${idea} with the following characteristics: ${physics.textures}. ${physics.lighting} creating ${physics.motion}. Rendered in ${physics.environment} with ${stylePresets.quality} quality and professional cinematography. 2026 standards: 24fps, single continuous shot, large-format photoreal, realistic physics, no text, no logos.`,
+      lighting: physics.lighting,
       camera: stylePresets.camera,
-      quality: stylePresets.quality,
-      motion: motionTemplate,
+      quality: physics.quality,
+      motion: physics.motion,
       background: randomFactor('background'),
       mood: randomFactor('mood'),
       weather: randomFactor('weather'),
-      sceneDescription: `${idea} in a ${style} setting, with ${stylePresets.lighting} and ${stylePresets.quality} rendering quality.`
+      physicsDetails: {
+        textures: physics.textures,
+        lighting: physics.lighting,
+        motion: physics.motion,
+        environment: physics.environment
+      },
+      sceneDescription: `${idea} in a ${style} setting with ${physics.textures}, ${physics.lighting}, and ${physics.motion} physics simulation.`,
+      technicalSpecs: {
+        fps: 24,
+        resolution: style === 'fantasy' ? '4k' : '1080p',
+        continuousShot: true,
+        noText: true,
+        noLogos: true
+      }
     };
     
     return enhanced;

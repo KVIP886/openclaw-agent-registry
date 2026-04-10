@@ -9,7 +9,7 @@
       "apiEndpoint": "https://generativelanguage.googleapis.com/v1beta",
       "enabled": false,
       "cost": "highest",
-      "notes": "Requires Google Cloud account with Vertex AI enabled"
+      "notes": "Requires Google Cloud account with Vertex AI enabled. Cinema quality, native audio support. 2026 best choice."
     },
     "seedance": {
       "name": "BytePlus Seedance",
@@ -17,15 +17,15 @@
       "apiEndpoint": "https://api.volcengine.com/v1",
       "enabled": false,
       "cost": "low",
-      "notes": "Best value for money, Chinese optimized"
+      "notes": "Best value for money, Chinese optimized. Character consistency, 15s max."
     },
     "wan": {
-      "name": "Alibaba Wan",
+      "name": "Alibaba Wan 2.6",
       "apiKey": "YOUR_ALIBABA_WAN_API_KEY_HERE",
       "apiEndpoint": "https://dashscope.aliyun.com/api",
       "enabled": false,
       "cost": "free",
-      "notes": "Free tier available, Chinese optimized"
+      "notes": "Free tier available, Chinese optimized. Best value, 10s max."
     },
     "runway": {
       "name": "Runway Gen4.5",
@@ -33,7 +33,7 @@
       "apiEndpoint": "https://api.runwayml.com/v1",
       "enabled": false,
       "cost": "medium",
-      "notes": "Professional quality, creative control"
+      "notes": "Professional quality, creative control. Character control, physics simulation."
     },
     "sora": {
       "name": "OpenAI Sora 2",
@@ -41,7 +41,15 @@
       "apiEndpoint": "https://api.openai.com/v1",
       "enabled": false,
       "cost": "highest",
-      "notes": "Requires waitlist access"
+      "notes": "Requires waitlist access. Best physics simulation, 15s max, 2026 standard."
+    },
+    "kling": {
+      "name": "Kling v3 Pro",
+      "apiKey": "YOUR_KLING_API_KEY_HERE",
+      "apiEndpoint": "https://api.kling.com/v1",
+      "enabled": false,
+      "cost": "high",
+      "notes": "3min max duration, best motion control, realistic human motion."
     },
     "minimax": {
       "name": "MiniMax Hailuo",
@@ -49,7 +57,7 @@
       "apiEndpoint": "https://api.minimaxi.com/v1",
       "enabled": false,
       "cost": "low",
-      "notes": "Chinese optimized, good for mobile"
+      "notes": "Chinese optimized, good for mobile, 5s max."
     }
   },
   "globalSettings": {

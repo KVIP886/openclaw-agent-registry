@@ -26,46 +26,46 @@ function loadApiConfig() {
   }
 }
 
-// AI Lobster Video Scenarios
+// AI Lobster Video Scenarios - Updated for 2026 Standards
 const lobsterScenarios = {
   underwater: {
     title: '🌊 Underwater Lobster Adventure',
-    prompt: 'A vibrant underwater scene with a colorful lobster crawling on coral reef, tropical fish swimming in background, clear blue water with sunlight filtering through, 4K resolution, cinematic lighting',
+    prompt: 'A vibrant underwater scene with a colorful lobster crawling on coral reef, tropical fish swimming in background, clear blue water with sunlight filtering through, 2026 standards: 24fps, volumetric lighting, motion blur, realistic physics simulation, large-format photoreal, 4K resolution, cinematic lighting, professional cinematography, dynamic camera movement',
     duration: 8,
     resolution: '1080p',
     style: 'realistic'
   },
   chef: {
     title: '👨‍🍳 The Culinary Lobster',
-    prompt: 'A professional chef carefully preparing a lobster dish in a high-end kitchen, stainless steel pans, fresh herbs, dramatic lighting, slow motion, food photography style, 4K',
+    prompt: 'A professional chef carefully preparing a lobster dish in a high-end kitchen, stainless steel pans, fresh herbs, dramatic lighting, slow motion, food photography style, 2026 standards: 24fps, volumetric lighting, motion blur, realistic physics simulation, large-format photoreal, 4K resolution, professional cinematography, dynamic camera movement',
     duration: 6,
     resolution: '1080p',
     style: 'professional'
   },
   cartoon: {
     title: '🎨 Cartoon Lobster Character',
-    prompt: 'A cute animated lobster character with expressive eyes, bright colors, smooth animation style, Pixar-style rendering, friendly atmosphere, playful movements',
+    prompt: 'A cute animated lobster character with expressive eyes, bright colors, smooth animation style, Pixar-style rendering, friendly atmosphere, playful movements, 2026 standards: 24fps, volumetric lighting, motion blur, realistic physics simulation, large-format photoreal, 720p resolution, animated cinematography, dynamic camera movement',
     duration: 6,
     resolution: '720p',
     style: 'animated'
   },
   cyberpunk: {
     title: '🌃 Cyberpunk Lobster',
-    prompt: 'A cyberpunk lobster with neon glowing elements, futuristic underwater city, holographic decorations, red and blue lighting, sci-fi atmosphere, 4K, detailed textures',
+    prompt: 'A cyberpunk lobster with neon glowing elements, futuristic underwater city, holographic decorations, red and blue lighting, sci-fi atmosphere, 2026 standards: 24fps, volumetric lighting, motion blur, realistic physics simulation, large-format photoreal, 4K resolution, cyberpunk cinematography, dynamic camera movement, detailed textures',
     duration: 10,
     resolution: '1080p',
     style: 'cyberpunk'
   },
   timeLapse: {
     title: '⏱️ Lobster Time-lapse',
-    prompt: 'Time-lapse of a lobster moving through an underwater garden, speed ramping from slow to fast, dynamic camera movement, natural underwater lighting, realistic physics',
+    prompt: 'Time-lapse of a lobster moving through an underwater garden, speed ramping from slow to fast, dynamic camera movement, natural underwater lighting, realistic physics simulation, 2026 standards: 24fps, volumetric lighting, motion blur, large-format photoreal, 4K resolution, documentary cinematography, professional lighting',
     duration: 8,
     resolution: '1080p',
     style: 'documentary'
   },
   fantasy: {
     title: '🐲 Fantasy Lobster Dragon',
-    prompt: 'A mythical lobster-dragon hybrid in a magical underwater temple, glowing runes, ancient architecture, mystical particles, epic scale, cinematic composition, 4K',
+    prompt: 'A mythical lobster-dragon hybrid in a magical underwater temple, glowing runes, ancient architecture, mystical particles, epic scale, 2026 standards: 24fps, volumetric lighting, motion blur, realistic physics simulation, large-format photoreal, 4K resolution, fantasy cinematography, mystical lighting, dynamic camera movement',
     duration: 12,
     resolution: '4k',
     style: 'fantasy'

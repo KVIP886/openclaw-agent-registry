@@ -1,0 +1,109 @@
+# System Health Check - GitHub Actions Workflow
+# Automated health monitoring for OpenClaw Agent Registry
+# Runs on every push to main branch
+
+name: System Health Check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:  # Manual trigger
+
+jobs:
+  health-check:
+    name: Health Check
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install Dependencies
+        run: |
+          cd C:\openclaw_workspace\projects\agent-registry
+          npm install
+      
+      - name: Run Emergency Stop Check (Lite)
+        run: |
+          cd C:\openclaw_workspace\projects\agent-registry
+          node scripts/emergency-lite.js
+        continue-on-error: true
+      
+      - name: Run Temperature Monitor (Lite)
+        run: |
+          cd C:\openclaw_workspace\projects\agent-registry
+          node scripts/temp-lite.js
+        continue-on-error: true
+      
+      - name: Run GPU/CPU Fix Check (Lite)
+        run: |
+          cd C:\openclaw_workspace\projects\agent-registry
+          node scripts/gpu-fix-lite.js
+        continue-on-error: true
+      
+      - name: Run Protection Check (Lite)
+        run: |
+          cd C:\openclaw_workspace\projects\agent-registry
+          node scripts/protect-lite.js
+        continue-on-error: true
+      
+      - name: Run Status Check
+        run: |
+          cd C:\openclaw_workspace\projects\agent-registry
+          node scripts/check-status.js
+        continue-on-error: true
+      
+      - name: Check API Configuration
+        run: |
+          cd C:\openclaw_workspace\projects\agent-registry
+          node scripts/test-video-api.js
+        continue-on-error: true
+      
+      - name: Upload Health Check Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: health-check-results
+          path: |
+            logs/
+            C:\openclaw_workspace\projects\agent-registry\logs\
+          retention-days: 7
+
+  video-test:
+    name: Video Generation Test
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install Dependencies
+        run: |
+          cd C:\openclaw_workspace\projects\agent-registry
+          npm install
+      
+      - name: Test Video Generation Scripts
+        run: |
+          cd C:\openclaw_workspace\projects\agent-registry
+          node scripts/create-lobster-video.js --list
+        continue-on-error: true
+      
+      - name: Test Prompt Standards
+        run: |
+          cd C:\openclaw_workspace\projects\agent-registry
+          node scripts/lobster-prompt-optimizer.js --test
+        continue-on-error: true
